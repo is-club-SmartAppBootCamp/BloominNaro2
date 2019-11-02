@@ -2,6 +2,7 @@ package com.example.naroapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
@@ -11,9 +12,17 @@ import android.view.ViewGroup
 import android.widget.TextView
 
 import com.example.naroapp.dummy.DummyContent
+import com.github.kittinunf.fuel.httpGet
+import com.github.kittinunf.fuel.json.responseJson
+import com.github.kittinunf.result.Result
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import kotlinx.android.synthetic.main.activity_item_list.*
 import kotlinx.android.synthetic.main.item_list_content.view.*
 import kotlinx.android.synthetic.main.item_list.*
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * An activity representing a list of Pings. This activity
@@ -30,6 +39,32 @@ class ItemListActivity : AppCompatActivity() {
      * device.
      */
     private var twoPane: Boolean = false
+    private val apiUrl = "https://api.syosetu.com/novelapi/api/"
+    private val listContents: MutableList<ContentsDeteail> = mutableListOf()
+
+    fun getJson() {
+        apiUrl.httpGet(listOf("out" to "json", "order" to "weeklypoint")).responseJson  { request, response, result ->
+            when (result) {
+                is Result.Success -> {
+                    Log.d("test", "taru")
+                    openJson(result.value.array())
+                }
+                is Result.Failure -> {
+                    Log.d("test", "puni")
+                }
+            }
+        }
+    }
+    fun openJson(json: JSONArray) {
+        val type = Types.newParameterizedType(ContentsDeteail::class.java)
+        val adapter: JsonAdapter<ContentsDeteail> = Moshi.Builder().build().adapter(type)
+
+        for (i in 1..json.length()-1) {
+            val data = json[i] as JSONObject
+            val content = adapter.fromJson(data.toString()) as ContentsDeteail
+            listContents.add(content)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,10 +73,7 @@ class ItemListActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         toolbar.title = title
 
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
-        }
+        getJson()
 
         if (item_detail_container != null) {
             // The detail container view will be present only in the
@@ -52,6 +84,7 @@ class ItemListActivity : AppCompatActivity() {
         }
 
         setupRecyclerView(item_list)
+
     }
 
     private fun setupRecyclerView(recyclerView: RecyclerView) {
